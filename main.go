@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/mikenomich/bindle/install"
+	"github.com/mikenomitch/bindle/install"
 )
 
 func main() {
