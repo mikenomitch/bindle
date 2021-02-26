@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"text/template"
 )
@@ -85,10 +86,10 @@ func (f *Install) Run(args []string) int {
 			return 1
 		}
 
-		// cmd := exec.Command("nomad", "run", completedFilePath)
-		// cmd.Stdout = os.Stdout
-		// cmd.Stderr = os.Stderr
-		// _ = cmd.Run()
+		cmd := exec.Command("nomad", "run", completedFilePath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		_ = cmd.Run()
 
 		// Error status of two might have to be ignored?
 		// if err != nil {
