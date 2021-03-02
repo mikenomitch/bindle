@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 
 	levantCommand "github.com/hashicorp/levant/command"
@@ -74,20 +73,17 @@ func (f *Install) Run(args []string) int {
 			return 1
 		}
 
-		// TODO: MAKE THIS WORK
+		// TODO: ADD TOP LEVEL VARS FILE
+		// TODO: ADD VARS FILE FROM THE FLAG
+
 		c := levantCommand.RenderCommand{}
-		res := c.Run("foo")
+		args := []string{templatePath, "--out", completedFilePath, "--var-file", variablesPath}
+		c.Run(args)
 
-		// err = parseTemplateAndWriteFile(
-		// 	completedFilePath,
-		// 	templateFileBody,
-		// 	variablesConfig,
-		// )
-
-		cmd := exec.Command("nomad", "run", completedFilePath)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		_ = cmd.Run()
+		// cmd := exec.Command("nomad", "run", completedFilePath)
+		// cmd.Stdout = os.Stdout
+		// cmd.Stderr = os.Stderr
+		// _ = cmd.Run()
 	}
 
 	log.Print(fmt.Sprintf("Successfully installed %s", packageName))
