@@ -3,15 +3,28 @@ package command
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 
-	levantCommand "github.com/hashicorp/levant/command"
+	"github.com/hashicorp/hcl2/gohcl"
+	"github.com/hashicorp/hcl2/hclparse"
+	"github.com/hashicorp/levant/template"
 	"github.com/mikenomitch/bindle/utils"
 )
+
+type nomadResources struct {
+	Resources []nomadResource `hcl:"nomad_resource,block"`
+}
+
+type nomadResource struct {
+	Name         string `hcl:"key,label"`
+	TemplateFile string `hcl:"template_file"`
+	VariableFile string `hcl:"variable_file"`
+	Description  string `hcl:"description"`
+	Type         string `hcl:"type"`
+}
 
 type Install struct{}
 
@@ -30,20 +43,29 @@ func (f *Install) Name() string { return "install" }
 
 func (f *Install) Run(args []string) int {
 	packageName := args[0]
-	log.Print("Installing", packageName)
+	log.Print("Installing ", packageName)
 
 	bindleDir := ".bindle"
 	packageDir := bindleDir + "/" + packageName
+
+	// NOTE: FOR NOW JUST WIPE IT ALL CLEAN
+	err := os.RemoveAll(packageDir)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Error removing package %s", packageDir))
+		return 1
+	}
+
 	os.Mkdir(packageDir, 0755)
 
 	topLevelVariablesPath := packageDir + "/variables.tf"
+	manifestPath := packageDir + "/manifest.hcl"
 
 	baseURL := getBaseUrl(packageName)
 	packageURL := baseURL + "/" + packageName
-	manifestURL := packageURL + "/manifest"
+	manifestURL := packageURL + "/manifest.hcl"
 	topLevelVariablesURL := packageURL + "/variables.tf"
 
-	manifestBody, err := utils.BodyFromURL(manifestURL)
+	err = utils.URLToFile(manifestURL, manifestPath)
 	if err != nil {
 		return 1
 	}
@@ -53,15 +75,22 @@ func (f *Install) Run(args []string) int {
 		return 1
 	}
 
-	templatesToDownload := strings.Split(manifestBody, "\n")
+	parser := hclparse.NewParser()
+	manifestHCLFile, diags := parser.ParseHCLFile(manifestPath)
 
-	for _, name := range templatesToDownload {
-		completedFilePath := packageDir + "/" + name
+	res := nomadResources{}
+	if diags = gohcl.DecodeBody(manifestHCLFile.Body, nil, &res); diags.HasErrors() {
+		log.Printf(diags.Error())
+		return 1
+	}
+
+	for _, resource := range res.Resources {
+		completedFilePath := packageDir + "/" + resource.TemplateFile
 		templatePath := completedFilePath + ".template"
-		variablesPath := packageDir + "/variables.tf"
+		variablesPath := packageDir + "/" + resource.VariableFile
 
-		templateFileURL := packageURL + "/" + name
-		variableURL := packageURL + "/variables.tf"
+		templateFileURL := packageURL + "/" + resource.TemplateFile
+		variableURL := packageURL + "/" + resource.VariableFile
 
 		err := utils.URLToFile(templateFileURL, templatePath)
 		if err != nil {
@@ -73,17 +102,29 @@ func (f *Install) Run(args []string) int {
 			return 1
 		}
 
-		// TODO: ADD TOP LEVEL VARS FILE
-		// TODO: ADD VARS FILE FROM THE FLAG
+		// TODO: ADD VARS FILE FROM COMMAND ITSELF! (WRITE A TEMP FILE AND SEND IT)
 
-		c := levantCommand.RenderCommand{}
-		args := []string{templatePath, "--out", completedFilePath, "--var-file", variablesPath}
-		c.Run(args)
+		vars := make(map[string]string)
+		vars["job_name"] = resource.Name
 
-		// cmd := exec.Command("nomad", "run", completedFilePath)
-		// cmd.Stdout = os.Stdout
-		// cmd.Stderr = os.Stderr
-		// _ = cmd.Run()
+		variableFilePaths := []string{topLevelVariablesPath, variablesPath}
+
+		job, errorA := template.RenderTemplate(templatePath, variableFilePaths, "", &vars)
+		if errorA != nil {
+			log.Printf("error rendering template: %s", err)
+			return 1
+		}
+
+		writer, err := os.OpenFile(completedFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		_, err = job.WriteTo(writer)
+		if err != nil {
+			return 1
+		}
+
+		cmd := exec.Command("nomad", "run", completedFilePath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		_ = cmd.Run()
 	}
 
 	log.Print(fmt.Sprintf("Successfully installed %s", packageName))
@@ -96,7 +137,7 @@ func addCliArgsToConfig(config map[string]string, args []string) (map[string]str
 			splitByEquals := strings.Split(arg, "=")
 			varNameWithExtra := splitByEquals[0]
 			varVal := splitByEquals[1]
-			varName := trimLeftChar(varNameWithExtra)
+			varName := utils.TrimLeftChar(varNameWithExtra)
 			config[varName] = varVal
 		}
 	}
@@ -168,28 +209,4 @@ func getBaseUrl(packageName string) string {
 	}
 
 	return baseURL
-}
-
-func BodyFromURL(url string) (string, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(body), nil
-}
-
-func trimLeftChar(s string) string {
-	for i := range s {
-		if i > 0 {
-			return s[i:]
-		}
-	}
-	return s[:0]
 }
