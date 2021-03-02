@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -8,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"text/template"
+
+	levantCommand "github.com/hashicorp/levant/command"
+	"github.com/mikenomitch/bindle/utils"
 )
 
 type Install struct{}
@@ -27,78 +30,67 @@ func (f *Install) Synopsis() string {
 func (f *Install) Name() string { return "install" }
 
 func (f *Install) Run(args []string) int {
-	fmt.Println(args)
-
 	packageName := args[0]
+	log.Print("Installing", packageName)
 
 	bindleDir := ".bindle"
-	packageDir := fmt.Sprintf("%s/%s", bindleDir, packageName)
+	packageDir := bindleDir + "/" + packageName
+	os.Mkdir(packageDir, 0755)
 
-	err := os.Mkdir(packageDir, 0755)
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Package %s already downloaded.", packageDir))
-		return 1
-	}
+	topLevelVariablesPath := packageDir + "/variables.tf"
 
-	// TODO: Make the Base URL change-able based on the source files
-	baseURL := "https://raw.githubusercontent.com/mikenomitch/nomad-packages/main"
-	packageURL := fmt.Sprintf("%s/%s", baseURL, packageName)
-	manifestURL := fmt.Sprintf("%s/%s", packageURL, "manifest")
-	variablesURL := fmt.Sprintf("%s/%s", packageURL, "vars")
+	baseURL := getBaseUrl(packageName)
+	packageURL := baseURL + "/" + packageName
+	manifestURL := packageURL + "/manifest"
+	topLevelVariablesURL := packageURL + "/variables.tf"
 
-	bodyString, err := bodyFromURL(manifestURL)
+	manifestBody, err := utils.BodyFromURL(manifestURL)
 	if err != nil {
 		return 1
 	}
 
-	config := map[string]string{}
-	configWithArgs, err := addCliArgsToConfig(config, args)
-	variablesConfig, err := configFromVariableURL(variablesURL, configWithArgs)
+	err = utils.URLToFile(topLevelVariablesURL, topLevelVariablesPath)
 	if err != nil {
-		fmt.Println(err)
 		return 1
 	}
 
-	templatesToDownload := strings.Split(bodyString, "\n")
-
-	log.Printf(templatesToDownload[0])
+	templatesToDownload := strings.Split(manifestBody, "\n")
 
 	for _, name := range templatesToDownload {
-		fileURL := fmt.Sprintf("%s/%s", packageURL, name)
+		completedFilePath := packageDir + "/" + name
+		templatePath := completedFilePath + ".template"
+		variablesPath := packageDir + "/variables.tf"
 
-		fmt.Println(fileURL)
+		templateFileURL := packageURL + "/" + name
+		variableURL := packageURL + "/variables.tf"
 
-		templateFileBody, err := bodyFromURL(fileURL)
+		err := utils.URLToFile(templateFileURL, templatePath)
 		if err != nil {
 			return 1
 		}
 
-		fmt.Println(templateFileBody)
-
-		completedFilePath := fmt.Sprintf("%s/%s", packageDir, name)
-
-		err = parseTemplateAndWriteFile(
-			completedFilePath,
-			templateFileBody,
-			variablesConfig,
-		)
+		err = utils.URLToFile(variableURL, variablesPath)
 		if err != nil {
 			return 1
 		}
+
+		// TODO: MAKE THIS WORK
+		c := levantCommand.RenderCommand{}
+		res := c.Run("foo")
+
+		// err = parseTemplateAndWriteFile(
+		// 	completedFilePath,
+		// 	templateFileBody,
+		// 	variablesConfig,
+		// )
 
 		cmd := exec.Command("nomad", "run", completedFilePath)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		_ = cmd.Run()
-
-		// Error status of two might have to be ignored?
-		// if err != nil {
-		// 	log.Print("error running job: ", err)
-		// 	return 1
-		// }
 	}
 
-	fmt.Println(fmt.Sprintf("Successfully installed %s", packageName))
+	log.Print(fmt.Sprintf("Successfully installed %s", packageName))
 	return 1
 }
 
@@ -116,44 +108,73 @@ func addCliArgsToConfig(config map[string]string, args []string) (map[string]str
 	return config, nil
 }
 
-func configFromVariableURL(url string, config map[string]string) (map[string]string, error) {
-	varBodyString, _ := bodyFromURL(url)
-	variableLines := strings.Split(varBodyString, "\n")
+// func configFromVariableURL(url string, config map[string]string) (map[string]string, error) {
+// 	varBodyString, _ := utils.BodyFromURL(url)
+// 	variableLines := strings.Split(varBodyString, "\n")
 
-	for _, variableLine := range variableLines {
-		linkChunks := strings.Split(variableLine, ",")
-		variableName := linkChunks[0]
+// 	for _, variableLine := range variableLines {
+// 		linkChunks := strings.Split(variableLine, ",")
+// 		variableName := linkChunks[0]
 
-		if _, ok := config[variableName]; !ok {
-			if len(linkChunks) > 1 {
-				variableDefault := linkChunks[1]
-				config[variableName] = variableDefault
-			} else {
-				err := fmt.Errorf("Missing value for %s", variableName)
-				return config, err
-			}
+// 		if _, ok := config[variableName]; !ok {
+// 			if len(linkChunks) > 1 {
+// 				variableDefault := linkChunks[1]
+// 				config[variableName] = variableDefault
+// 			} else {
+// 				err := fmt.Errorf("Missing value for %s", variableName)
+// 				return config, err
+// 			}
+// 		}
+// 	}
+
+// 	return config, nil
+// }
+
+// func parseTemplateAndWriteFile(path string, templateBody string, config map[string]string) error {
+// 	file, err := os.Create(path)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	tmpl, err := template.New(path).Parse(templateBody)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	err = tmpl.Execute(file, config)
+
+// 	return nil
+// }
+
+func getBaseUrl(packageName string) string {
+	sourcesFilePath := ".bindle/sources"
+	// set the default
+	baseURL := "https://raw.githubusercontent.com/mikenomitch/nomad-packages/main"
+
+	file, err := os.Open(sourcesFilePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		prefix := fmt.Sprintf("%s,", packageName)
+
+		if strings.HasPrefix(line, prefix) {
+			byComma := strings.Split(line, ",")
+			baseURL = byComma[1]
 		}
 	}
 
-	return config, nil
-}
-
-func parseTemplateAndWriteFile(path string, templateBody string, config map[string]string) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return err
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
 	}
 
-	tmpl, err := template.New(path).Parse(templateBody)
-	if err != nil {
-		panic(err)
-	}
-	err = tmpl.Execute(file, config)
-
-	return nil
+	return baseURL
 }
 
-func bodyFromURL(url string) (string, error) {
+func BodyFromURL(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err

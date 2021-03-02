@@ -12,6 +12,9 @@ func main() {
 	c := cli.NewCLI("bindle", "1.0.0")
 	c.Args = os.Args[1:]
 	c.Commands = map[string]cli.CommandFactory{
+		"init": func() (cli.Command, error) {
+			return &cmd.Init{}, nil
+		},
 		"install": func() (cli.Command, error) {
 			return &cmd.Install{}, nil
 		},
@@ -21,8 +24,8 @@ func main() {
 		"search": func() (cli.Command, error) {
 			return &cmd.Search{}, nil
 		},
-		"init": func() (cli.Command, error) {
-			return &cmd.Init{}, nil
+		"source": func() (cli.Command, error) {
+			return &cmd.Source{}, nil
 		},
 	}
 

@@ -3,6 +3,8 @@ package command
 import (
 	"fmt"
 	"strings"
+
+	"github.com/mikenomitch/bindle/utils"
 )
 
 type Source struct{}
@@ -15,18 +17,19 @@ Some helper text goes here
 }
 
 func (f *Source) Synopsis() string {
-	return "Add a new source for Bindle packages"
+	return "Add a new source for a Bindle package"
 }
 
 func (f *Source) Name() string { return "source" }
 
 func (f *Source) Run(args []string) int {
-	fmt.Println("Running Source")
-	fmt.Println("Parse args")
-	fmt.Println("If first arg is 'remove' then remove it from the file - short circuit on this")
-	fmt.Println("First arg - Name, Second arg - URL")
-	fmt.Println("Write these to a local file")
-	fmt.Println("Return a success message")
+	// TODO: Handle multiples and removals
+	sourcesFilePath := ".bindle/sources"
+	packageName := args[0]
+	sourceForPackage := args[1]
+
+	utils.WriteToFile(sourcesFilePath, fmt.Sprintf("%s,%s\n", packageName, sourceForPackage))
+	fmt.Println("Saved new source for", packageName)
 
 	return 1
 }
