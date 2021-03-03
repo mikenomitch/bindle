@@ -2,7 +2,9 @@ package command
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -57,8 +59,9 @@ func (f *Install) Run(args []string) int {
 
 	os.Mkdir(packageDir, 0755)
 
-	topLevelVariablesPath := packageDir + "/variables.tf"
 	manifestPath := packageDir + "/manifest.hcl"
+	topLevelVariablesPath := packageDir + "/variables.tf"
+	argVariablesPath := packageDir + "/arg_variables.json"
 
 	baseURL := getBaseUrl(packageName)
 	packageURL := baseURL + "/" + packageName
@@ -71,6 +74,11 @@ func (f *Install) Run(args []string) int {
 	}
 
 	err = utils.URLToFile(topLevelVariablesURL, topLevelVariablesPath)
+	if err != nil {
+		return 1
+	}
+
+	err = writeCLIArgsToFile(args, argVariablesPath)
 	if err != nil {
 		return 1
 	}
@@ -102,13 +110,10 @@ func (f *Install) Run(args []string) int {
 			return 1
 		}
 
-		// TODO: ADD VARS FILE FROM COMMAND ITSELF! (WRITE A TEMP FILE AND SEND IT)
-
 		vars := make(map[string]string)
 		vars["job_name"] = resource.Name
 
-		variableFilePaths := []string{topLevelVariablesPath, variablesPath}
-
+		variableFilePaths := []string{topLevelVariablesPath, variablesPath, argVariablesPath}
 		job, errorA := template.RenderTemplate(templatePath, variableFilePaths, "", &vars)
 		if errorA != nil {
 			log.Printf("error rendering template: %s", err)
@@ -131,18 +136,26 @@ func (f *Install) Run(args []string) int {
 	return 1
 }
 
-func addCliArgsToConfig(config map[string]string, args []string) (map[string]string, error) {
+func writeCLIArgsToFile(args []string, path string) error {
+	vars := make(map[string]string)
 	for i, arg := range args {
-		if i > 0 {
+		if i > 0 && strings.Contains(arg, "=") {
 			splitByEquals := strings.Split(arg, "=")
 			varNameWithExtra := splitByEquals[0]
 			varVal := splitByEquals[1]
 			varName := utils.TrimLeftChar(varNameWithExtra)
-			config[varName] = varVal
+			vars[varName] = varVal
 		}
 	}
 
-	return config, nil
+	file, _ := json.MarshalIndent(vars, "", " ")
+
+	err := ioutil.WriteFile(path, file, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // func configFromVariableURL(url string, config map[string]string) (map[string]string, error) {
