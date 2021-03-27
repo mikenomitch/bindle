@@ -82,7 +82,7 @@ func CreateEmptyFile(name string) {
 
 func Mkdir(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return os.Mkdir(path, 0755)
+		return os.MkdirAll(path, 0755)
 	}
 
 	return nil

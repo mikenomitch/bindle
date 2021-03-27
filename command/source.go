@@ -22,16 +22,16 @@ func (f *Source) Synopsis() string {
 func (f *Source) Name() string { return "source" }
 
 func (f *Source) Run(args []string) int {
-	sourcesFilePath := ".bindle/sources"
-	sourceName := args[0]
-	catalogDir := sourcesFilePath + "/" + sourceName
+	catalogsFilePath := ".bindle/catalogs"
+	catalogName := args[0]
+	catalogDir := catalogsFilePath + "/" + catalogName
 
 	gitRepoUrl := args[1]
 
 	err := utils.CloneRepoToDir(gitRepoUrl, catalogDir)
 	utils.Handle(err, "error cloning default catalog")
 
-	utils.Log("Successfully added source \"" + sourceName + "\"")
+	utils.Log("Successfully added source \"" + catalogName + "\"")
 
-	return 1
+	return 0
 }

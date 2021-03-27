@@ -23,7 +23,7 @@ func (f *Uninstall) Name() string { return "uninstall" }
 
 func (f *Uninstall) Run(args []string) int {
 	packageName := args[0]
-	bindleDir := ".bindle"
+	bindleDir := ".bindle/installs"
 	packageDir := fmt.Sprintf("%s/%s", bindleDir, packageName)
 
 	// TODO: SOMEHOW IDENTIFY AND STOP THE JOB

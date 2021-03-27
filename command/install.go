@@ -60,23 +60,32 @@ func (i *installFlags) Get() map[string]string {
 }
 
 func (f *Install) Run(args []string) int {
-	packageName := args[0]
-	log.Print("Installing Package: ", packageName)
+	packageArg := args[0]
 
+	log.Print("Installing Package: ", packageArg)
+
+	packageName := packageArg
 	catalogsDir := ".bindle/catalogs/default"
+	if strings.Contains(packageName, "/") {
+		splitBySlash := strings.Split(packageName, "/")
+		packageName = splitBySlash[1]
+
+		catalogsDir = ".bindle/catalogs/" + splitBySlash[0]
+	}
+
 	installsDir := ".bindle/installs"
 
 	packageSourceDir := catalogsDir + "/" + packageName
-	packageInstallDir := installsDir + "/" + packageName
+	packageInstallDir := installsDir + "/" + packageArg
 
 	manifestPath := packageSourceDir + "/manifest.hcl"
 	topLevelVariablesPath := packageSourceDir + "/variables.hcl"
 
-	err := utils.Mkdir(packageInstallDir)
-	utils.Handle(err, "error making installs dir for package")
+	err := os.RemoveAll(packageInstallDir)
+	utils.Handle(err, "error removing old data")
 
-	argVariablesPath := packageInstallDir + "/arg_variables.json"
-	utils.CreateEmptyFile(argVariablesPath)
+	err = utils.Mkdir(packageInstallDir)
+	utils.Handle(err, "error making installs dir for package")
 
 	parser := hclparse.NewParser()
 	manifestHCLFile, diags := parser.ParseHCLFile(manifestPath)
@@ -119,6 +128,7 @@ func (f *Install) Run(args []string) int {
 	}
 
 	log.Print(fmt.Sprintf("Successfully installed %s", packageName))
+
 	return 1
 }
 
