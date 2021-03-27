@@ -29,13 +29,21 @@ type Install struct{}
 
 func (f *Install) Help() string {
 	helpText := `
-Some helper text goes here
+Usage: bindle install <package-name> [variables]
+
+	Install Packages on your Nomad Cluster.
+
+	Example: bindle install grafana -datacenters=us-east-1,us-east-2 -memory=500
+
+	Assumes NOMAD_ADDR is configured properly and Nomad is up and running.
+
+	Use "bindle list" to see which packages are availible.
 `
 	return strings.TrimSpace(helpText)
 }
 
 func (f *Install) Synopsis() string {
-	return "Install Nomad jobs automatically"
+	return "Install Packages on your Nomad Cluster"
 }
 
 func (f *Install) Name() string { return "install" }
@@ -62,7 +70,7 @@ func (i *installFlags) Get() map[string]string {
 func (f *Install) Run(args []string) int {
 	packageArg := args[0]
 
-	log.Print("Installing Package: ", packageArg)
+	fmt.Print("Installing Package: ", packageArg)
 
 	packageName := packageArg
 	catalogsDir := ".bindle/catalogs/default"
@@ -109,17 +117,11 @@ func (f *Install) Run(args []string) int {
 
 		cliVars := parseVariablesFromCliArgs(args)
 		job, errorA := template.RenderTemplate(templatePath, variableFilePaths, "", &cliVars)
-
-		if errorA != nil {
-			log.Printf("error rendering template: %s", err)
-			return 1
-		}
+		utils.Handle(errorA, "Error rendering template")
 
 		writer, err := os.OpenFile(completedFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		_, err = job.WriteTo(writer)
-		if err != nil {
-			return 1
-		}
+		utils.Handle(err, "Error writing template to disk")
 
 		cmd := exec.Command("nomad", "run", completedFilePath)
 		cmd.Stdout = os.Stdout
@@ -127,7 +129,7 @@ func (f *Install) Run(args []string) int {
 		_ = cmd.Run()
 	}
 
-	log.Print(fmt.Sprintf("Successfully installed %s", packageName))
+	fmt.Print(fmt.Sprintf("Sent job to Nomad for package: \"%s\".\n\nBindle does not properly handle errors, so you will have to validate the deployment yourself.", packageName))
 
 	return 1
 }

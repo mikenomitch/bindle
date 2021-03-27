@@ -10,13 +10,17 @@ type Uninstall struct{}
 
 func (f *Uninstall) Help() string {
 	helpText := `
-Some helper text goes here
+Usage: bindle init package-name
+
+	Currently only removes the templates locally.
+
+	Will ideally be extended to stop running jobs.
 `
 	return strings.TrimSpace(helpText)
 }
 
 func (f *Uninstall) Synopsis() string {
-	return "Uninstall Bindle package. (Kind of... doesn't actually remove from nomad)"
+	return "Uninstall a Nomad Package and stop running related jobs. (Not working yet)"
 }
 
 func (f *Uninstall) Name() string { return "uninstall" }

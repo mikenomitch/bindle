@@ -12,8 +12,11 @@ type List struct{}
 
 func (f *List) Help() string {
 	helpText := `
-Lists the packages availible to install.
-To add more packages, use the source command.
+Usage: bindle list
+
+	Lists the packages availible to install.
+
+	To add more packages, use the 'bindle souce' command.
 `
 	return strings.TrimSpace(helpText)
 }

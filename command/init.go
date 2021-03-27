@@ -11,9 +11,11 @@ type Init struct{}
 
 func (f *Init) Help() string {
 	helpText := `
-Init sets up bindle and the associated terraform resources.
+Usage: bindle init
 
-It creates a .bindle directory and pulls the base source.
+	Init creates a .bindle directory and pulls the default catalog of Nomad packages.
+
+	Calling init again will reload the default catalog.
 `
 	return strings.TrimSpace(helpText)
 }
@@ -32,20 +34,19 @@ func (f *Init) Run(args []string) int {
 	defaultCatalogRepo := "https://github.com/mikenomitch/nomad-packages"
 	defaultCatalogSourceDir := catalogsDir + "/default"
 
-	// TODO: make this not remove sources eventaully
-	err := os.RemoveAll(bindleDir)
+	err := utils.Mkdir(bindleDir)
+	utils.Handle(err, "error initializing")
+	err = utils.Mkdir(catalogsDir)
+	utils.Handle(err, "error initializing")
+
+	err = utils.Mkdir(installsDir)
+	utils.Handle(err, "error initializing")
+
+	err = utils.Mkdir(defaultCatalogSourceDir)
+	utils.Handle(err, "error initializing")
+
+	err = os.RemoveAll(defaultCatalogSourceDir)
 	utils.Handle(err, "error removing old data")
-
-	err = os.Mkdir(bindleDir, 0755)
-	utils.Handle(err, "error initializing")
-	err = os.Mkdir(catalogsDir, 0755)
-	utils.Handle(err, "error initializing")
-
-	err = os.Mkdir(installsDir, 0755)
-	utils.Handle(err, "error initializing")
-
-	err = os.Mkdir(defaultCatalogSourceDir, 0755)
-	utils.Handle(err, "error initializing")
 
 	err = utils.CloneRepoToDir(defaultCatalogRepo, defaultCatalogSourceDir)
 	utils.Handle(err, "error cloning default catalog")
