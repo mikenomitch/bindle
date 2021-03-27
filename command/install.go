@@ -1,7 +1,6 @@
 package command
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,7 +22,7 @@ type nomadResources struct {
 type nomadResource struct {
 	Name         string `hcl:"key,label"`
 	TemplateFile string `hcl:"template_file"`
-	VariableFile string `hcl:"variable_file"`
+	VariableFile string `hcl:"variable_file,optional"`
 	Description  string `hcl:"description"`
 	Type         string `hcl:"type"`
 }
@@ -45,43 +44,25 @@ func (f *Install) Name() string { return "install" }
 
 func (f *Install) Run(args []string) int {
 	packageName := args[0]
-	log.Print("Installing ", packageName)
+	log.Print("Installing Package: ", packageName)
 
-	bindleDir := ".bindle"
-	packageDir := bindleDir + "/" + packageName
+	catalogsDir := ".bindle/catalogs/default"
+	installsDir := ".bindle/installs"
 
-	// NOTE: FOR NOW JUST WIPE IT ALL CLEAN
-	err := os.RemoveAll(packageDir)
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Error removing package %s", packageDir))
-		return 1
-	}
+	packageSourceDir := catalogsDir + "/" + packageName
+	packageInstallDir := installsDir + "/" + packageName
 
-	os.Mkdir(packageDir, 0755)
+	manifestPath := packageSourceDir + "/manifest.hcl"
+	topLevelVariablesPath := packageSourceDir + "/variables.hcl"
 
-	manifestPath := packageDir + "/manifest.hcl"
-	topLevelVariablesPath := packageDir + "/variables.tf"
-	argVariablesPath := packageDir + "/arg_variables.json"
+	err := utils.Mkdir(packageInstallDir)
+	utils.Handle(err, "error making installs dir for package")
 
-	baseURL := getBaseUrl(packageName)
-	packageURL := baseURL + "/" + packageName
-	manifestURL := packageURL + "/manifest.hcl"
-	topLevelVariablesURL := packageURL + "/variables.tf"
-
-	err = utils.URLToFile(manifestURL, manifestPath)
-	if err != nil {
-		return 1
-	}
-
-	err = utils.URLToFile(topLevelVariablesURL, topLevelVariablesPath)
-	if err != nil {
-		return 1
-	}
+	argVariablesPath := packageInstallDir + "/arg_variables.json"
+	utils.CreateEmptyFile(argVariablesPath)
 
 	err = writeCLIArgsToFile(args, argVariablesPath)
-	if err != nil {
-		return 1
-	}
+	utils.Handle(err, "Error writing CLI args to json file")
 
 	parser := hclparse.NewParser()
 	manifestHCLFile, diags := parser.ParseHCLFile(manifestPath)
@@ -89,32 +70,24 @@ func (f *Install) Run(args []string) int {
 	res := nomadResources{}
 	if diags = gohcl.DecodeBody(manifestHCLFile.Body, nil, &res); diags.HasErrors() {
 		log.Printf(diags.Error())
-		return 1
+		os.Exit(1)
 	}
 
 	for _, resource := range res.Resources {
-		completedFilePath := packageDir + "/" + resource.TemplateFile
-		templatePath := completedFilePath + ".template"
-		variablesPath := packageDir + "/" + resource.VariableFile
-
-		templateFileURL := packageURL + "/" + resource.TemplateFile
-		variableURL := packageURL + "/" + resource.VariableFile
-
-		err := utils.URLToFile(templateFileURL, templatePath)
-		if err != nil {
-			return 1
+		variablesPathForTemplate := topLevelVariablesPath
+		if resource.VariableFile != "" {
+			variablesPathForTemplate = packageSourceDir + "/" + resource.VariableFile
 		}
 
-		err = utils.URLToFile(variableURL, variablesPath)
-		if err != nil {
-			return 1
-		}
+		completedFilePath := packageInstallDir + "/" + resource.TemplateFile
+		templatePath := packageSourceDir + "/" + resource.TemplateFile
 
 		vars := make(map[string]string)
 		vars["job_name"] = resource.Name
 
-		variableFilePaths := []string{topLevelVariablesPath, variablesPath, argVariablesPath}
+		variableFilePaths := []string{topLevelVariablesPath, variablesPathForTemplate, argVariablesPath}
 		job, errorA := template.RenderTemplate(templatePath, variableFilePaths, "", &vars)
+
 		if errorA != nil {
 			log.Printf("error rendering template: %s", err)
 			return 1
@@ -195,31 +168,31 @@ func writeCLIArgsToFile(args []string, path string) error {
 // 	return nil
 // }
 
-func getBaseUrl(packageName string) string {
-	sourcesFilePath := ".bindle/sources"
-	// set the default
-	baseURL := "https://raw.githubusercontent.com/mikenomitch/nomad-packages/main"
+// func getBaseUrl(packageName string) string {
+// 	sourcesFilePath := ".bindle/sources"
+// 	// set the default
+// 	baseURL := "https://raw.githubusercontent.com/mikenomitch/nomad-packages/main"
 
-	file, err := os.Open(sourcesFilePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+// 	file, err := os.Open(sourcesFilePath)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		prefix := fmt.Sprintf("%s,", packageName)
+// 	scanner := bufio.NewScanner(file)
+// 	for scanner.Scan() {
+// 		line := scanner.Text()
+// 		prefix := fmt.Sprintf("%s,", packageName)
 
-		if strings.HasPrefix(line, prefix) {
-			byComma := strings.Split(line, ",")
-			baseURL = byComma[1]
-		}
-	}
+// 		if strings.HasPrefix(line, prefix) {
+// 			byComma := strings.Split(line, ",")
+// 			baseURL = byComma[1]
+// 		}
+// 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+// 	if err := scanner.Err(); err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	return baseURL
-}
+// 	return baseURL
+// }

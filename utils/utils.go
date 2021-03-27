@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -59,4 +60,36 @@ func TrimLeftChar(s string) string {
 		}
 	}
 	return s[:0]
+}
+
+func Handle(err error, message string) {
+	if err != nil {
+		fmt.Println(message)
+		os.Exit(1)
+	}
+}
+
+func Log(message string) {
+	log.Println(message)
+}
+
+func CreateEmptyFile(name string) {
+	d := []byte("")
+	check(ioutil.WriteFile(name, d, 0644))
+}
+
+func Mkdir(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return os.Mkdir(path, 0755)
+	}
+
+	return nil
+}
+
+// Internal
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
 }
