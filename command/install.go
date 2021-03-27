@@ -1,9 +1,7 @@
 package command
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -42,6 +40,25 @@ func (f *Install) Synopsis() string {
 
 func (f *Install) Name() string { return "install" }
 
+type installFlags map[string]string
+
+func (i *installFlags) String() string {
+	return "the return value!"
+}
+
+func (i *installFlags) Set(value string) error {
+	utils.Log("IN HERE: " + value)
+
+	valSplitByEquals := strings.Split(value, "=")
+	i.Get()[valSplitByEquals[0]] = valSplitByEquals[1]
+
+	return nil
+}
+
+func (i *installFlags) Get() map[string]string {
+	return *i
+}
+
 func (f *Install) Run(args []string) int {
 	packageName := args[0]
 	log.Print("Installing Package: ", packageName)
@@ -61,9 +78,6 @@ func (f *Install) Run(args []string) int {
 	argVariablesPath := packageInstallDir + "/arg_variables.json"
 	utils.CreateEmptyFile(argVariablesPath)
 
-	err = writeCLIArgsToFile(args, argVariablesPath)
-	utils.Handle(err, "Error writing CLI args to json file")
-
 	parser := hclparse.NewParser()
 	manifestHCLFile, diags := parser.ParseHCLFile(manifestPath)
 
@@ -82,11 +96,10 @@ func (f *Install) Run(args []string) int {
 		completedFilePath := packageInstallDir + "/" + resource.TemplateFile
 		templatePath := packageSourceDir + "/" + resource.TemplateFile
 
-		vars := make(map[string]string)
-		vars["job_name"] = resource.Name
+		variableFilePaths := []string{topLevelVariablesPath, variablesPathForTemplate}
 
-		variableFilePaths := []string{topLevelVariablesPath, variablesPathForTemplate, argVariablesPath}
-		job, errorA := template.RenderTemplate(templatePath, variableFilePaths, "", &vars)
+		cliVars := parseVariablesFromCliArgs(args)
+		job, errorA := template.RenderTemplate(templatePath, variableFilePaths, "", &cliVars)
 
 		if errorA != nil {
 			log.Printf("error rendering template: %s", err)
@@ -109,10 +122,12 @@ func (f *Install) Run(args []string) int {
 	return 1
 }
 
-func writeCLIArgsToFile(args []string, path string) error {
+// This is a pretty sad implementation
+func parseVariablesFromCliArgs(args []string) map[string]string {
 	vars := make(map[string]string)
+
 	for i, arg := range args {
-		if i > 0 && strings.Contains(arg, "=") {
+		if i > 0 && strings.Contains(arg, "=") && strings.HasPrefix(arg, "-") {
 			splitByEquals := strings.Split(arg, "=")
 			varNameWithExtra := splitByEquals[0]
 			varVal := splitByEquals[1]
@@ -121,78 +136,5 @@ func writeCLIArgsToFile(args []string, path string) error {
 		}
 	}
 
-	file, _ := json.MarshalIndent(vars, "", " ")
-
-	err := ioutil.WriteFile(path, file, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return vars
 }
-
-// func configFromVariableURL(url string, config map[string]string) (map[string]string, error) {
-// 	varBodyString, _ := utils.BodyFromURL(url)
-// 	variableLines := strings.Split(varBodyString, "\n")
-
-// 	for _, variableLine := range variableLines {
-// 		linkChunks := strings.Split(variableLine, ",")
-// 		variableName := linkChunks[0]
-
-// 		if _, ok := config[variableName]; !ok {
-// 			if len(linkChunks) > 1 {
-// 				variableDefault := linkChunks[1]
-// 				config[variableName] = variableDefault
-// 			} else {
-// 				err := fmt.Errorf("Missing value for %s", variableName)
-// 				return config, err
-// 			}
-// 		}
-// 	}
-
-// 	return config, nil
-// }
-
-// func parseTemplateAndWriteFile(path string, templateBody string, config map[string]string) error {
-// 	file, err := os.Create(path)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	tmpl, err := template.New(path).Parse(templateBody)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	err = tmpl.Execute(file, config)
-
-// 	return nil
-// }
-
-// func getBaseUrl(packageName string) string {
-// 	sourcesFilePath := ".bindle/sources"
-// 	// set the default
-// 	baseURL := "https://raw.githubusercontent.com/mikenomitch/nomad-packages/main"
-
-// 	file, err := os.Open(sourcesFilePath)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer file.Close()
-
-// 	scanner := bufio.NewScanner(file)
-// 	for scanner.Scan() {
-// 		line := scanner.Text()
-// 		prefix := fmt.Sprintf("%s,", packageName)
-
-// 		if strings.HasPrefix(line, prefix) {
-// 			byComma := strings.Split(line, ",")
-// 			baseURL = byComma[1]
-// 		}
-// 	}
-
-// 	if err := scanner.Err(); err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	return baseURL
-// }

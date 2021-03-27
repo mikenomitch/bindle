@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 
-	git "github.com/go-git/go-git/v5"
 	"github.com/mikenomitch/bindle/utils"
 )
 
@@ -30,12 +29,10 @@ func (f *Init) Run(args []string) int {
 	catalogsDir := bindleDir + "/catalogs"
 	installsDir := bindleDir + "/installs"
 
-	catalogOverriesPath := bindleDir + "/overrides"
-
 	defaultCatalogRepo := "https://github.com/mikenomitch/nomad-packages"
 	defaultCatalogSourceDir := catalogsDir + "/default"
 
-	// TODO: make this less aggressive
+	// TODO: make this not remove sources eventaully
 	err := os.RemoveAll(bindleDir)
 	utils.Handle(err, "error removing old data")
 
@@ -50,14 +47,9 @@ func (f *Init) Run(args []string) int {
 	err = os.Mkdir(defaultCatalogSourceDir, 0755)
 	utils.Handle(err, "error initializing")
 
-	utils.CreateEmptyFile(catalogOverriesPath)
-
-	_, err = git.PlainClone(defaultCatalogSourceDir, false, &git.CloneOptions{
-		URL:      defaultCatalogRepo,
-		Progress: os.Stdout,
-	})
-
+	err = utils.CloneRepoToDir(defaultCatalogRepo, defaultCatalogSourceDir)
 	utils.Handle(err, "error cloning default catalog")
+
 	utils.Log("Bindle successfully initialized.")
 
 	return 0

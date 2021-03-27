@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	git "github.com/go-git/go-git/v5"
 )
 
 func URLToFile(url, path string) error {
@@ -84,6 +86,15 @@ func Mkdir(path string) error {
 	}
 
 	return nil
+}
+
+func CloneRepoToDir(url, path string) error {
+	_, err := git.PlainClone(path, false, &git.CloneOptions{
+		URL:      url,
+		Progress: os.Stdout,
+	})
+
+	return err
 }
 
 // Internal

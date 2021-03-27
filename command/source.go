@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/mikenomitch/bindle/utils"
@@ -23,13 +22,16 @@ func (f *Source) Synopsis() string {
 func (f *Source) Name() string { return "source" }
 
 func (f *Source) Run(args []string) int {
-	// TODO: Handle multiples and removals
 	sourcesFilePath := ".bindle/sources"
-	packageName := args[0]
-	sourceForPackage := args[1]
+	sourceName := args[0]
+	catalogDir := sourcesFilePath + "/" + sourceName
 
-	utils.WriteToFile(sourcesFilePath, fmt.Sprintf("%s,%s\n", packageName, sourceForPackage))
-	fmt.Println("Saved new source for", packageName)
+	gitRepoUrl := args[1]
+
+	err := utils.CloneRepoToDir(gitRepoUrl, catalogDir)
+	utils.Handle(err, "error cloning default catalog")
+
+	utils.Log("Successfully added source \"" + sourceName + "\"")
 
 	return 1
 }

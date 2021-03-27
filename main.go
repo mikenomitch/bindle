@@ -10,6 +10,7 @@ import (
 
 func main() {
 	c := cli.NewCLI("bindle", "1.0.0")
+
 	c.Args = os.Args[1:]
 	c.Commands = map[string]cli.CommandFactory{
 		"init": func() (cli.Command, error) {
@@ -21,8 +22,8 @@ func main() {
 		"uninstall": func() (cli.Command, error) {
 			return &cmd.Uninstall{}, nil
 		},
-		"search": func() (cli.Command, error) {
-			return &cmd.Search{}, nil
+		"list": func() (cli.Command, error) {
+			return &cmd.List{}, nil
 		},
 		"source": func() (cli.Command, error) {
 			return &cmd.Source{}, nil
