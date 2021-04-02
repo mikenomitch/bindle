@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -34,6 +35,9 @@ func (f *Init) Run(args []string) int {
 	defaultCatalogRepo := "https://github.com/mikenomitch/nomad-packages"
 	defaultCatalogSourceDir := catalogsDir + "/default"
 
+	fmt.Println("Initializing Bindle.")
+	fmt.Println("Default catalog: github.com/mikenomitch/nomad-packages")
+
 	err := utils.Mkdir(bindleDir)
 	utils.Handle(err, "error initializing")
 	err = utils.Mkdir(catalogsDir)
@@ -51,7 +55,7 @@ func (f *Init) Run(args []string) int {
 	err = utils.CloneRepoToDir(defaultCatalogRepo, defaultCatalogSourceDir)
 	utils.Handle(err, "error cloning default catalog")
 
-	utils.Log("Bindle successfully initialized.")
+	fmt.Println("Bindle successfully initialized. View availible packages with 'bindle list'.")
 
 	return 0
 }

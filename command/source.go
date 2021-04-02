@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -42,7 +43,7 @@ func (f *Source) Run(args []string) int {
 	err = utils.CloneRepoToDir(gitRepoUrl, catalogDir)
 	utils.Handle(err, "error cloning catalog")
 
-	utils.Log("Successfully added source \"" + catalogName + "\"")
+	fmt.Println("Successfully added source \"" + catalogName + "\"")
 
 	return 0
 }

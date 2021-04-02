@@ -90,8 +90,7 @@ func Mkdir(path string) error {
 
 func CloneRepoToDir(url, path string) error {
 	_, err := git.PlainClone(path, false, &git.CloneOptions{
-		URL:      url,
-		Progress: os.Stdout,
+		URL: url,
 	})
 
 	return err

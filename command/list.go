@@ -49,7 +49,8 @@ func (f *List) Run(args []string) int {
 		}
 	}
 
-	fmt.Println("\nUse the 'source' command to add new catalogs")
+	fmt.Println("\nRun 'bindle source <source-name> <source-url>' to add new catalogs")
+	fmt.Println("\nRun 'bindle install <package>' to install a package.")
 
 	return 0
 }

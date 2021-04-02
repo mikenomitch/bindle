@@ -48,25 +48,6 @@ func (f *Install) Synopsis() string {
 
 func (f *Install) Name() string { return "install" }
 
-type installFlags map[string]string
-
-func (i *installFlags) String() string {
-	return "the return value!"
-}
-
-func (i *installFlags) Set(value string) error {
-	utils.Log("IN HERE: " + value)
-
-	valSplitByEquals := strings.Split(value, "=")
-	i.Get()[valSplitByEquals[0]] = valSplitByEquals[1]
-
-	return nil
-}
-
-func (i *installFlags) Get() map[string]string {
-	return *i
-}
-
 func (f *Install) Run(args []string) int {
 	packageArg := args[0]
 
