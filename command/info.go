@@ -22,26 +22,26 @@ type nomadVarible struct {
 	Meta        map[string]string `hcl:"meta,optional"`
 }
 
-type Vars struct{}
+type Info struct{}
 
-func (f *Vars) Help() string {
+func (f *Info) Help() string {
 	helpText := `
-Usage: bindle vars <pack-name>
+Usage: bindle info <pack-name>
 
-	Get information on variables in a pack.
+	Get information about a pack.
 
-	Example: bindle vars grafana
+	Example: bindle info grafana
 `
 	return strings.TrimSpace(helpText)
 }
 
-func (f *Vars) Synopsis() string {
-	return "Get information on variables in a pack"
+func (f *Info) Synopsis() string {
+	return "Get information about a pack"
 }
 
-func (f *Vars) Name() string { return "vars" }
+func (f *Info) Name() string { return "info" }
 
-func (f *Vars) Run(args []string) int {
+func (f *Info) Run(args []string) int {
 	packageArg := args[0]
 	packageName := packageArg
 	catalogsDir := ".bindle/catalogs/default"
@@ -64,15 +64,26 @@ func (f *Vars) Run(args []string) int {
 		os.Exit(1)
 	}
 
-	fmt.Println("Variables for ", packageName)
+	fmt.Println("Info for pack:", packageName)
+	fmt.Println("")
+
+	varString := ""
+	fmt.Println("Variables:")
 	for _, nomadVar := range res.Variables {
 		fmt.Println("-----------")
 		fmt.Println("Key: ", nomadVar.Key)
 		fmt.Println("Type: ", nomadVar.Type)
 		fmt.Println("Description: ", nomadVar.Description)
 		fmt.Println("Default: ", nomadVar.Default)
+
+		varString = varString + " -" + nomadVar.Key + "=" + nomadVar.Default
 	}
 	fmt.Println("=========")
+	fmt.Println("")
+
+	fmt.Println("Example installation:")
+	fmt.Println("bindle install", packageName, varString)
+	fmt.Println("")
 
 	return 1
 }

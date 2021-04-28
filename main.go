@@ -28,8 +28,8 @@ func main() {
 		"source": func() (cli.Command, error) {
 			return &cmd.Source{}, nil
 		},
-		"vars": func() (cli.Command, error) {
-			return &cmd.Vars{}, nil
+		"info": func() (cli.Command, error) {
+			return &cmd.Info{}, nil
 		},
 	}
 
