@@ -31,6 +31,9 @@ func main() {
 		"info": func() (cli.Command, error) {
 			return &cmd.Info{}, nil
 		},
+		"ui": func() (cli.Command, error) {
+			return &cmd.UI{}, nil
+		},
 	}
 
 	exitStatus, err := c.Run()

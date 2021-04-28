@@ -1,0 +1,27 @@
+{{!-- {{#each @model.package.VariableSets as |vs|}}
+  {{#each vs.Contents as |var|}}
+    <Variable name={{var}} />
+  {{/each}}
+{{/each}} --}}
+
+<h2>
+  Building: {{@packageName}}
+</h2>
+
+{{#each @package.Variables as |var|}}
+  <Variable
+    @name={{var.Key}}
+    @type={{var.Type}}
+    @default={{var.Default}}
+    @description={{var.Description}}
+    @min={{var.Max}}
+    @max={{var.Min}}
+    @setVariable={{this.setVariable}}
+  />
+{{/each}}
+
+<button class="button is-primary" type="button" {{on "click" this.generate}}>
+  Deploy Job
+</button>
+
+{{!-- TEST --}}

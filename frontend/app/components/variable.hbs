@@ -1,0 +1,27 @@
+<div {{did-insert this.setDefaultValue}}>
+  <label for={{@name}}>
+    {{@description}}
+  </label>
+  <br />
+  {{#if (eq @type "string")}}
+    <Input
+      class="input"
+      @id={{@name}}
+      @type="text"
+      @value={{this.inputVal}}
+      {{on "input" this.setVal}}
+    />
+  {{else if (eq @type "number")}}
+    <Input
+      class="input"
+      @id={{@name}}
+      @type="number"
+      @max={{@max}}
+      @min={{@min}}
+      @value={{this.inputVal}}
+      {{on "input" this.setVal}}
+    />
+  {{else}}
+    Unsupported Var Type {{@type}}
+  {{/if}}
+</div>

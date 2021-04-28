@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	git "github.com/go-git/go-git/v5"
 )
@@ -41,18 +42,28 @@ func WriteToFile(path, text string) error {
 }
 
 func BodyFromURL(url string) (string, error) {
-	resp, err := http.Get(url)
+	bodyBuffer, err := BufferFromURL(url)
 	if err != nil {
 		return "", err
+	}
+
+	return string(bodyBuffer), nil
+}
+
+func BufferFromURL(url string) ([]byte, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return make([]byte, 1), err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		// some random []byte
+		return make([]byte, 1), err
 	}
 
-	return string(body), nil
+	return body, nil
 }
 
 func TrimLeftChar(s string) string {
@@ -94,6 +105,21 @@ func CloneRepoToDir(url, path string) error {
 	})
 
 	return err
+}
+
+func DirsInPath(path string) []string {
+	files, err := ioutil.ReadDir(path)
+	Handle(err, "Error reading catalogs")
+
+	var packages []string
+
+	for _, f := range files {
+		if f.IsDir() && !(strings.HasPrefix(f.Name(), ".")) {
+			packages = append(packages, f.Name())
+		}
+	}
+
+	return packages
 }
 
 // Internal

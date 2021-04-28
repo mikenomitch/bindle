@@ -1,0 +1,12 @@
+{{page-title "Catalog"}}
+<p>
+  Select a package to configure:
+</p>
+
+<ul>
+  {{#each @model as |package|}}
+    <li>
+      <LinkTo @route="package" @model={{package}}>{{package}}</LinkTo>
+    </li>
+  {{/each}}
+</ul>
