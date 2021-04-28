@@ -14,15 +14,15 @@ func (f *List) Help() string {
 	helpText := `
 Usage: bindle list
 
-	Lists the packages availible to install.
+	Lists the packs availible to install.
 
-	To add more packages, use the 'bindle souce' command.
+	To add more packs, use the 'bindle souce' command.
 `
 	return strings.TrimSpace(helpText)
 }
 
 func (f *List) Synopsis() string {
-	return "List the packages in your sources"
+	return "List the packs in your sources"
 }
 
 func (f *List) Name() string { return "list" }
@@ -31,7 +31,7 @@ func (f *List) Run(args []string) int {
 	files, err := ioutil.ReadDir(".bindle/catalogs")
 	utils.Handle(err, "Error reading catalogs")
 
-	fmt.Println("Availible packages:\n ")
+	fmt.Println("Availible packs:\n ")
 
 	for _, f := range files {
 		if f.IsDir() {
@@ -50,7 +50,8 @@ func (f *List) Run(args []string) int {
 	}
 
 	fmt.Println("\nRun 'bindle source <source-name> <source-url>' to add new catalogs")
-	fmt.Println("\nRun 'bindle install <package>' to install a package.")
+	fmt.Println("\nRun 'bindle info <pack-name>' to get more info on pack.")
+	fmt.Println("\nRun 'bindle install <pack-name>' to install a pack.")
 
 	return 0
 }
