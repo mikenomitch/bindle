@@ -28,6 +28,9 @@ func main() {
 		"source": func() (cli.Command, error) {
 			return &cmd.Source{}, nil
 		},
+		"vars": func() (cli.Command, error) {
+			return &cmd.Vars{}, nil
+		},
 	}
 
 	exitStatus, err := c.Run()
