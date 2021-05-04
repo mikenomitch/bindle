@@ -27,14 +27,12 @@ func (f *UI) Synopsis() string {
 func (f *UI) Name() string { return "ui" }
 
 func (f *UI) Run(args []string) int {
-	// TODO: Error handle if the server fails
-
-	if err := open.Start("localhost:9000"); err != nil {
+	if err := open.Start("http://localhost:9000"); err != nil {
 		utils.Handle(err, "Error opening URL")
 		return 1
 	}
 
-	fmt.Println("Starting Bindle backend server.")
+	fmt.Println("Starting Bindle server.")
 	service.Run()
 
 	return 0
