@@ -1,3 +1,16 @@
 {{page-title "Nomad Job Builder"}}
 
-{{outlet}}
+<nav class="navbar is-primary" title="navigation">
+  <div class="navbar-brand">
+    <LinkTo @route="application" class="navbar-item is-logo" aria-label="Home">
+      Bindle
+    </LinkTo>
+  </div>
+  {{!-- <div class="navbar-end">
+    <a href="/usage" class="navbar-item">Using Bindle</a>
+  </div> --}}
+</nav>
+
+<div class="content">
+  {{outlet}}
+</div>
